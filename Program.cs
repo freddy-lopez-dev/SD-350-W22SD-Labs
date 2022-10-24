@@ -107,5 +107,20 @@ public abstract class ClientHandler
     ClientFactory clientFactory;
 
     public abstract Client createClient(string clientType, string userName);
-    public abstract boo
+}
+
+public class RetailClientHandler : ClientHandler
+{
+    public override Client createClient(string clientType, string userName)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class EnterpriseClientHandler : ClientHandler
+{
+    public override Client createClient(string clientType, string userName)
+    {
+        throw new NotImplementedException();
+    }
 }
