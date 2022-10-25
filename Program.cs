@@ -1,125 +1,114 @@
-﻿
-public interface Client
+﻿using System.Text;
+using System.Text.Json;
+
+SecuritySystem newSystem = new TwoFactorRequired();
+
+newSystem.DeserializeUser("MOCKDATA.json");
+
+
+public abstract class SecuritySystem
 {
-    public string UserName { get; set; }
-    public string UserAuthString { get; set; }
-    public bool HasAccess { get; set; }
-
-    public string BuildAuthString();
-}
-
-public class User : Client
-{
-    public string UserName { get; set; }
-    public string UserAuthString { get; set; }
-    public bool HasAccess { get; set; } = false;
-
-    public string BuildAuthString()
+    public User DeserializeUser(string fileName)
     {
-        return UserAuthString;
+        User user;
+        Deserializer deserializer = new Deserializer();
+
+        deserializer.DeserializedJSON(fileName);
+
+        
+        user = CreateUser(deserializer);
+
+        return user;
     }
+    protected abstract User CreateUser(Deserializer Deserializer);
+
 }
 
-public class Manager : Client
+public class TwoFactorRequired : SecuritySystem
 {
-    public string UserName { get; set; }
-    public string UserAuthString { get; set; }
-    public bool HasAccess { get; set; } = true;
-
-    public string BuildAuthString()
+    protected override User CreateUser(Deserializer Deserializer)
     {
-        return UserAuthString + "MAN";
-    }
-}
+        User newUser;
 
-public class Admin : Client
-{
-    public string UserName { get; set; }
-    public string UserAuthString { get; set; }
-    public bool HasAccess { get; set; } = true;
-
-    public string BuildAuthString()
-    {
-        return UserAuthString + "ADMIN";
-    }
-}
-
-public interface AccessBehaviour
-{
-    public Client Client { get; set; }
-
-    public bool HandleAccess();
-}
-
-public class CheckString : AccessBehaviour
-{
-    public Client Client { get; set;}
-
-    public CheckString(Client client)
-    {
-        Client = client;
-    }
-
-    public bool HandleAccess()
-    {
-        if (Client.UserAuthString.Contains("MAN") || Client.UserAuthString.Contains("ADMIN"))
+        if(Deserializer.TwoFactorAuthentication == true || Deserializer.IsAdmin == true)
         {
-            return true;
+            newUser = new Administrator();
+        } else
+        {
+            throw new Exception("Invalid JSON properties");
+        }
+
+        return newUser;
+
+    }
+}
+
+public class TwoFactorNotRequired : SecuritySystem
+{
+    protected override User CreateUser(Deserializer Deserializer)
+    {
+        User newUser;
+
+        if (Deserializer.TwoFactorAuthentication == true || Deserializer.IsAdmin == true)
+        {
+            newUser = new Administrator();
         }
         else
         {
-            return false;
+            newUser = new AuthorizedUser();
+        }
+
+        return newUser;
+    }
+}
+
+
+
+public abstract class User
+{
+    public string Password { get; set; }
+
+    public abstract string PasswordHash();
+
+}
+
+public class Deserializer
+{
+    public bool TwoFactorAuthentication { get; set; }
+    public bool IsAdmin { get; set; }
+    public List<StringTags> incoming { get; set; } = new List<StringTags>();
+
+    public void DeserializedJSON(string fileName)
+    {
+        using (StreamReader r = new StreamReader(fileName))
+        {
+            string json = r.ReadToEnd();
+            incoming = JsonSerializer.Deserialize<List<StringTags>>(json);
+
+            foreach (var data in incoming)
+            {
+                TwoFactorAuthentication = data.TwoFactorAuthentication;
+                IsAdmin = data.IsAdmin;
+            }
         }
     }
 }
+public record struct StringTags (
+    bool TwoFactorAuthentication,
+    bool IsAdmin
+    );
 
-public class SwitchAuth : AccessBehaviour
+public class Administrator : User
 {
-    public Client Client { get; set; }
-
-    public SwitchAuth(Client client)
-    {
-        Client = client;
-    }
-
-    public bool HandleAccess()
-    {
-        Client.HasAccess = !Client.HasAccess;
-        return Client.HasAccess;
-    }
-}
-
-public abstract class ClientFactory
-{
-    public Client createClient(string clientType, string userName)
-    {
-        Client client;
-
-        client = createClient(clientType, userName);
-        client.BuildAuthString();
-
-        return client;
-    }
-}
-
-public abstract class ClientHandler
-{
-    ClientFactory clientFactory;
-
-    public abstract Client createClient(string clientType, string userName);
-}
-
-public class RetailClientHandler : ClientHandler
-{
-    public override Client createClient(string clientType, string userName)
+    public override string PasswordHash()
     {
         throw new NotImplementedException();
     }
 }
 
-public class EnterpriseClientHandler : ClientHandler
+public class AuthorizedUser : User
 {
-    public override Client createClient(string clientType, string userName)
+    public override string PasswordHash()
     {
         throw new NotImplementedException();
     }
