@@ -33,6 +33,9 @@ public class TwoFactorRequired : SecuritySystem
         if(Deserializer.TwoFactorAuthentication == true || Deserializer.IsAdmin == true)
         {
             newUser = new Administrator();
+        } else if (Deserializer.TwoFactorAuthentication == false)
+        {
+            newUser = new AuthorizedUser();
         } else
         {
             throw new Exception("Invalid JSON properties");
